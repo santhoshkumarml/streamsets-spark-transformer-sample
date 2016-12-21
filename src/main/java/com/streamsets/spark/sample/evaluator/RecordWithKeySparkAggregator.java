@@ -17,7 +17,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.streamsets.sample.sparkevaluator;
+package com.streamsets.spark.sample.evaluator;
 
 import com.streamsets.pipeline.api.Field;
 import com.streamsets.pipeline.api.Record;
@@ -34,7 +34,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 
-public class SparkEvaluator extends SparkTransformer {
+public class RecordWithKeySparkAggregator extends SparkTransformer {
   private static final String KEY = "/key";
   private static final String AGGREGATE_FIELD = "/aggregateField";
 
