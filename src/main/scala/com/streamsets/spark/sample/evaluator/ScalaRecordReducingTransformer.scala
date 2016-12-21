@@ -65,7 +65,7 @@ object ScalaRecordReducingTransformer extends SparkTransformer with Serializable
       (key, r)
     }).reduceByKey( (r1, r2) => {
       //Merge Lists
-      val recordAggreagtedField = addRecordsToAggregatedFieldFn(r1, List[Field]()) ::: addRecordsToAggregatedFieldFn(r2, List[Field]())
+      val recordAggreagtedField = addRecordsToAggregatedFieldFn(r1) ::: addRecordsToAggregatedFieldFn(r2)
       //Set root field again with all aggregateFields
       val rootMap = mutable.LinkedHashMap[String, Field]()
       rootMap.put(AGGREGATED_LIST_FIELD_PATH, Field.create(recordAggreagtedField))
