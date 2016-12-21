@@ -1,23 +1,4 @@
-/**
-  * Copyright 2016 StreamSets Inc.
-  *
-  * Licensed under the Apache Software Foundation (ASF) under one
-  * or more contributor license agreements.  See the NOTICE file
-  * distributed with this work for additional information
-  * regarding copyright ownership.  The ASF licenses this file
-  * to you under the Apache License, Version 2.0 (the
-  * "License"); you may not use this file except in compliance
-  * with the License.  You may obtain a copy of the License at
-  *
-  * http://www.apache.org/licenses/LICENSE-2.0
-  *
-  * Unless required by applicable law or agreed to in writing, software
-  * distributed under the License is distributed on an "AS IS" BASIS,
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-  */
-package com.streamsets.spark.sample.evaluator
+package com.streamsets.sample.spark.transformer
 
 import com.streamsets.pipeline.api.{Field, Record}
 import com.streamsets.pipeline.spark.api.{SparkTransformer, TransformResult}
@@ -25,31 +6,31 @@ import org.apache.spark.api.java.JavaRDD
 import org.apache.spark.api.java.function.PairFunction
 
 import scala.collection.JavaConversions._
-import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-object ScalaRecordReducingTransformer extends SparkTransformer with Serializable {
-  val KEY_FIELD_PATH = "/key"
-  val AGGREGATED_LIST_FIELD_PATH = "/aggregatedListField"
+class ScalaRecordReducingTransformer extends SparkTransformer with Serializable {
+  val KEY_FIELD_NAME = "key"
+  val AGGREGATED_LIST_FIELD_NAME = "aggregatedListField"
+  val KEY_FIELD_PATH = "/" + KEY_FIELD_NAME
+  val AGGREGATED_LIST_FIELD_PATH = "/" + AGGREGATED_LIST_FIELD_NAME
 
   override def transform(recordRDD: JavaRDD[Record]): TransformResult = {
     //Filter error records, record with no '/key' or records with '/key', but the field type is not long/integer/short
     val errorRdd = recordRDD.rdd.filter( r => {
-      !r.has(KEY_FIELD_PATH) || r.get(KEY_FIELD_PATH).getType.isOneOf(Field.Type.LONG, Field.Type.INTEGER, Field.Type.SHORT)
+      !r.has(KEY_FIELD_PATH) || !r.get(KEY_FIELD_PATH).getType.isOneOf(Field.Type.LONG, Field.Type.INTEGER, Field.Type.SHORT)
     })
 
     //Check whether the record already has /aggregatedListField
     //If so add all the list fields in /aggregateListField to the result
     //if not add the records root field to the result
-    val addRecordsToAggregatedFieldFn: (Record) => List[Field] = (r)  => {
+    val getAggregatedFieldsForRecordFn: (Record) => List[Field] = (r)  => {
       var resultListBuffer = ListBuffer[Field]()
       val aggregatedField = r.get(AGGREGATED_LIST_FIELD_PATH)
       if (aggregatedField != null) {
-        r.delete(AGGREGATED_LIST_FIELD_PATH);
+        r.delete(AGGREGATED_LIST_FIELD_PATH)
         resultListBuffer ++= aggregatedField.getValueAsList
       } else {
-        val rootField = r.get()
-        resultListBuffer += Field.create(rootField.getValueAsMap)
+        resultListBuffer += Field.create(r.get.getValueAsMap)
       }
       resultListBuffer.toList
     }
@@ -59,19 +40,23 @@ object ScalaRecordReducingTransformer extends SparkTransformer with Serializable
     //And get all the records from the (key, record)
     val resultRdd = recordRDD.rdd.filter(r => {
       r.has(KEY_FIELD_PATH) && r.get(KEY_FIELD_PATH).getType.isOneOf(Field.Type.LONG, Field.Type.INTEGER, Field.Type.SHORT)
-    }).map( r => {
+    }).map(r => {
       val key = r.get(KEY_FIELD_PATH).getValueAsLong
       r.delete(KEY_FIELD_PATH)
       (key, r)
-    }).reduceByKey( (r1, r2) => {
+    }).reduceByKey((r1, r2) => {
       //Merge Lists
-      val recordAggreagtedField = addRecordsToAggregatedFieldFn(r1) ::: addRecordsToAggregatedFieldFn(r2)
+      val aggregatedFieldListResult = getAggregatedFieldsForRecordFn(r1) ::: getAggregatedFieldsForRecordFn(r2)
       //Set root field again with all aggregateFields
-      val rootMap = mutable.LinkedHashMap[String, Field]()
-      rootMap.put(AGGREGATED_LIST_FIELD_PATH, Field.create(recordAggreagtedField))
-      r1.set(Field.create(Field.Type.LIST_MAP, rootMap))
+      val rootMap = Map(AGGREGATED_LIST_FIELD_NAME -> Field.create(aggregatedFieldListResult))
+      r1.set(Field.create(rootMap))
       r1
-    }).values
+    }).map(rdd => {
+      val record = rdd._2
+      val key = rdd._1
+      record.get.getValueAsMap += (KEY_FIELD_NAME -> Field.create(Field.Type.LONG, key))
+      record
+    })
 
     //return transformer result
     new TransformResult(

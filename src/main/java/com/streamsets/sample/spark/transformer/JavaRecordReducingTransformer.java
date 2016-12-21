@@ -1,23 +1,4 @@
-/**
- * Copyright 2016 StreamSets Inc.
- *
- * Licensed under the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-package com.streamsets.spark.sample.evaluator;
+package com.streamsets.sample.spark.transformer;
 
 import com.streamsets.pipeline.api.Field;
 import com.streamsets.pipeline.api.Record;
@@ -32,22 +13,26 @@ import scala.Tuple2;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 public class JavaRecordReducingTransformer extends SparkTransformer implements Serializable {
-  private static final String KEY_FIELD_PATH = "/key";
-  private static final String AGGREGATE_LIST_FIELD_PATH = "/aggregateListField";
+  private static final String KEY_FIELD_NAME = "key";
+  private static final String AGGREGATE_LIST_FIELD_NAME = "aggregateListField";
+  private static final String KEY_FIELD_PATH = "/" + KEY_FIELD_NAME;
+  private static final String AGGREGATE_LIST_FIELD_PATH = "/" + AGGREGATE_LIST_FIELD_NAME;
 
   //Check whether the record already has /aggregatedListField
   //If so add all the list fields in /aggregateListField to the result
   //if not add the records root field to the result
-  private List<Field> getAggregatedFields(Record record) {
-    Field aggregateListFieleInRecord = record.get(AGGREGATE_LIST_FIELD_PATH);
+  private List<Field> getAggregatedFieldsForRecord(Record record) {
+    Field aggregateListFieldInRecord = record.get(AGGREGATE_LIST_FIELD_PATH);
     List<Field> aggregateListField = new ArrayList<>();
-    if (aggregateListFieleInRecord != null) {
+    if (aggregateListFieldInRecord != null) {
       record.delete(AGGREGATE_LIST_FIELD_PATH);
-      aggregateListField.addAll(aggregateListFieleInRecord.getValueAsList());
+      aggregateListField.addAll(aggregateListFieldInRecord.getValueAsList());
     } else {
       Field field = record.get();
       aggregateListField.add(Field.create(field.getValueAsMap()));
@@ -57,11 +42,11 @@ public class JavaRecordReducingTransformer extends SparkTransformer implements S
 
   //Reduce multiple records by adding the root field of the record to aggregatedListField
   private Record reduceRecord(Record record1, Record record2) {
-    List<Field> aggregateListField = new ArrayList<>(getAggregatedFields(record1));
-    aggregateListField.addAll(getAggregatedFields(record2));
-    LinkedHashMap<String, Field> rootMap = new LinkedHashMap<>();
-    rootMap.put(AGGREGATE_LIST_FIELD_PATH, Field.create(Field.Type.LIST, aggregateListField));
-    record1.set(Field.createListMap(rootMap));
+    List<Field> aggregateListField = new ArrayList<>(getAggregatedFieldsForRecord(record1));
+    aggregateListField.addAll(getAggregatedFieldsForRecord(record2));
+    Map<String, Field> rootMap = new HashMap<>();
+    rootMap.put(AGGREGATE_LIST_FIELD_NAME, Field.create(Field.Type.LIST, aggregateListField));
+    record1.set(Field.create(Field.Type.MAP, rootMap));
     return record1;
   }
 
@@ -108,7 +93,7 @@ public class JavaRecordReducingTransformer extends SparkTransformer implements S
       public Record call(Tuple2<Long, Record> v1) throws Exception {
         Record record = v1._2();
         LinkedHashMap<String, Field> rootField = record.get().getValueAsListMap();
-        rootField.put(KEY_FIELD_PATH, Field.create(Field.Type.LONG, v1._1()));
+        rootField.put(KEY_FIELD_NAME, Field.create(Field.Type.LONG, v1._1()));
         return record;
       }
     });
