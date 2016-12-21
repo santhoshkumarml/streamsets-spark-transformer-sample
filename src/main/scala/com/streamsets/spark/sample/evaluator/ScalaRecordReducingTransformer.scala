@@ -28,7 +28,7 @@ import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-object ScalaSparkRecordReducer extends SparkTransformer with Serializable {
+object ScalaRecordReducingTransformer extends SparkTransformer with Serializable {
   val KEY_FIELD_PATH = "/key"
   val AGGREGATED_LIST_FIELD_PATH = "/aggregatedListField"
 

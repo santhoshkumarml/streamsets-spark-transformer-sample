@@ -35,7 +35,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 
-public class JavaSparkReducingTransformer extends SparkTransformer implements Serializable {
+public class JavaRecordReducingTransformer extends SparkTransformer implements Serializable {
   private static final String KEY_FIELD_PATH = "/key";
   private static final String AGGREGATE_LIST_FIELD_PATH = "/aggregateListField";
 
