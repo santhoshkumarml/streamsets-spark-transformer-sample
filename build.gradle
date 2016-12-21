@@ -1,7 +1,7 @@
 group 'com.streamsets'
 version '1.0-SNAPSHOT'
 
-apply plugin: 'java'
+apply plugin: 'scala'
 
 sourceCompatibility = 1.7
 
