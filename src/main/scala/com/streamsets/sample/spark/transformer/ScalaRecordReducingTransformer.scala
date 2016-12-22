@@ -14,26 +14,26 @@ class ScalaRecordReducingTransformer extends SparkTransformer with Serializable 
   val KEY_FIELD_PATH = "/" + KEY_FIELD_NAME
   val AGGREGATED_LIST_FIELD_PATH = "/" + AGGREGATED_LIST_FIELD_NAME
 
+  //Check whether the record already has /aggregatedListField
+  //If so add all the list fields in /aggregateListField to the result
+  //if not add the records root field to the result
+  def getAggregatedFieldsForRecordFn: (Record) => List[Field] = (r)  => {
+    var resultListBuffer = ListBuffer[Field]()
+    val aggregatedField = r.get(AGGREGATED_LIST_FIELD_PATH)
+    if (aggregatedField != null) {
+      r.delete(AGGREGATED_LIST_FIELD_PATH)
+      resultListBuffer ++= aggregatedField.getValueAsList
+    } else {
+      resultListBuffer += Field.create(r.get.getValueAsMap)
+    }
+    resultListBuffer.toList
+  }
+
   override def transform(recordRDD: JavaRDD[Record]): TransformResult = {
     //Filter error records, record with no '/key' or records with '/key', but the field type is not long/integer/short
     val errorRdd = recordRDD.rdd.filter( r => {
       !r.has(KEY_FIELD_PATH) || !r.get(KEY_FIELD_PATH).getType.isOneOf(Field.Type.LONG, Field.Type.INTEGER, Field.Type.SHORT)
     })
-
-    //Check whether the record already has /aggregatedListField
-    //If so add all the list fields in /aggregateListField to the result
-    //if not add the records root field to the result
-    val getAggregatedFieldsForRecordFn: (Record) => List[Field] = (r)  => {
-      var resultListBuffer = ListBuffer[Field]()
-      val aggregatedField = r.get(AGGREGATED_LIST_FIELD_PATH)
-      if (aggregatedField != null) {
-        r.delete(AGGREGATED_LIST_FIELD_PATH)
-        resultListBuffer ++= aggregatedField.getValueAsList
-      } else {
-        resultListBuffer += Field.create(r.get.getValueAsMap)
-      }
-      resultListBuffer.toList
-    }
 
     //Filter non error records, map to long key, value based on '/key' field
     //then run a reducer by key to reduce all the records with the same key to one record
