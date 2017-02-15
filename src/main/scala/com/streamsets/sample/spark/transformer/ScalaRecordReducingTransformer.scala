@@ -9,10 +9,10 @@ import scala.collection.JavaConversions._
 import scala.collection.mutable.ListBuffer
 
 class ScalaRecordReducingTransformer extends SparkTransformer with Serializable {
-  val KEY_FIELD_NAME = "key"
-  val AGGREGATED_LIST_FIELD_NAME = "aggregatedListField"
-  val KEY_FIELD_PATH = "/" + KEY_FIELD_NAME
-  val AGGREGATED_LIST_FIELD_PATH = "/" + AGGREGATED_LIST_FIELD_NAME
+  private val KEY_FIELD_NAME = "key"
+  private val AGGREGATED_LIST_FIELD_NAME = "aggregatedListField"
+  private val KEY_FIELD_PATH = "/" + KEY_FIELD_NAME
+  private val AGGREGATED_LIST_FIELD_PATH = "/" + AGGREGATED_LIST_FIELD_NAME
 
   //Check whether the record already has /aggregatedListField
   //If so add all the list fields in /aggregateListField to the result
